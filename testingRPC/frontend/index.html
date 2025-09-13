@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subnet DA Watchdog</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="min-h-screen bg-gray-100 flex flex-col items-center pt-12">
+    <h1 class="text-4xl font-bold text-gray-800 mb-8">Subnet DA Watchdog</h1>
+    <div id="da-card" class="w-full max-w-xl border-4 rounded-xl shadow-lg p-8 transition-all duration-300 bg-white">
+      <h2 class="text-2xl font-semibold text-blue-900 mb-4">DA Health Score</h2>
+      <p id="score" class="text-3xl font-bold mb-6">Loading...</p>
+      <div id="block-details" class="mb-6"></div>
+      <div id="tx-details" class="mb-6"></div>
+      <p id="consistency" class="text-lg font-medium"></p>
+    </div>
+  </div>
+
+  <script>
+    async function fetchDA() {
+      try {
+        const res = await fetch("http://localhost:3000/da");
+        const data = await res.json();
+
+        // Score
+        const scoreEl = document.getElementById("score");
+        scoreEl.textContent = data.daScore + "/100";
+
+        // Block details
+        const blockDetailsEl = document.getElementById("block-details");
+        blockDetailsEl.innerHTML = `<div class='font-semibold text-gray-700 mb-2'>Blocks:</div>` + data.blockDetails.map(b =>
+          `<div class='flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-2 text-sm'>
+            <span class='text-blue-600 font-medium'>RPC:</span> <span class='font-mono'>${b.rpc}</span>
+            <span class='text-yellow-700 font-medium'>Number:</span> <span class='font-mono'>${b.number}</span>
+            <span class='text-gray-500 font-medium'>Hash:</span> <span class='font-mono break-all'>${b.hash}</span>
+            <span class='text-green-700 font-medium'>TxCount:</span> <span class='font-mono'>${b.txCount}</span>
+          </div>`
+        ).join("");
+
+        // Transaction details
+        const txDetailsEl = document.getElementById("tx-details");
+        if(data.sampledTxs.length === 0) {
+          txDetailsEl.innerHTML = `<div class='font-semibold text-gray-700'>No transactions sampled.</div>`;
+        } else {
+          txDetailsEl.innerHTML = `<div class='font-semibold text-gray-700 mb-2'>Sampled Transactions:</div>` + data.txDetails.map((tx, i) =>
+            `<div class='flex flex-wrap items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 mb-2 text-sm'>
+              <span class='text-indigo-700 font-medium'>Sample #${i+1}:</span>
+              <span class='font-mono text-gray-600'>${tx.hashes.join(", ")}</span>
+              <span class='${tx.consistent ? "text-green-700" : "text-red-600"} font-bold ml-2'>${tx.consistent ? "✔ Consistent" : "✖ Inconsistent"}</span>
+            </div>`
+          ).join("");
+        }
+
+        // Consistency status
+        const consistencyEl = document.getElementById("consistency");
+  consistencyEl.innerHTML = `<span class='font-semibold text-gray-700'>Blocks Consistent:</span> <span class='${data.blocksConsistent ? "text-green-700" : "text-red-600"} font-bold ml-2'>${data.blocksConsistent ? "✔ Yes" : "✖ No"}</span>`;
+
+        // Color code score using Tailwind
+        const card = document.getElementById("da-card");
+        if(data.daScore >= 80){
+          card.classList.remove("border-yellow-500", "border-red-600", "bg-red-100", "bg-yellow-100");
+          card.classList.add("border-green-600", "bg-green-50");
+        } else if(data.daScore >= 50){
+          card.classList.remove("border-green-600", "border-red-600", "bg-green-50", "bg-red-100");
+          card.classList.add("border-yellow-500", "bg-yellow-100");
+        } else {
+          card.classList.remove("border-green-600", "border-yellow-500", "bg-green-50", "bg-yellow-100");
+          card.classList.add("border-red-600", "bg-red-100");
+        }
+
+      } catch(err){
+        document.getElementById("score").textContent = "Error fetching data";
+      }
+    }
+
+    // Fetch immediately and every 10 seconds
+    fetchDA();
+    setInterval(fetchDA, 3000);
+  </script>
+</body>
+</html>

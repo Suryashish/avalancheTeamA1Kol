@@ -3,22 +3,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
-import { AlertTriangle, Activity, Wifi, Database, Clock, TrendingUp, Download, CheckCircle, XCircle } from 'lucide-react'
+import { AlertTriangle, Activity, Wifi, Database, Clock, Download, XCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { PerformanceTab } from '@/components/PerformanceTab'
 import { AlertsTab } from '@/components/AlertsTab'
 import { NetworkTab } from '@/components/NetworkTab'
 import { AnalyticsTab } from '@/components/AnalyticsTab'
+import { LiveDataTab } from '@/components/tabs/LiveDataTab'
+import { IndexerPage } from '@/components/IndexerPage'
 import { ModeToggle } from '@/components/mode-toggle'
 import './App.css'
 
 interface DAResult {
   timestamp: string
   daScore: number
+  scoreBreakdown?: {
+    blockConsistency: string
+    txConsistency: string
+    rpcHealth: string
+    responseTime: string
+    networkReliability: string
+    dataFreshness: string
+    errorPenalty: string
+  }
+  scoreFactors?: {
+    blockConsistency: number
+    txConsistency: number
+    rpcHealth: number
+    responseTime: number
+    networkReliability: number
+    dataFreshness: number
+    errorPenalty: number
+  }
+  grade?: string
   blockDetails: Array<{
     rpc: string
     number: string
@@ -28,13 +50,59 @@ interface DAResult {
     gasUsed: string
     gasLimit: string
     size: string
+    parentHash?: string
+    miner?: string
+    difficulty?: string
+    extraData?: string
+  }>
+  rawBlocks?: Array<{
+    rpc: string
+    success: boolean
+    data: {
+      number: number
+      hash: string
+      parentHash: string
+      timestamp: string
+      gasUsed: number
+      gasLimit: number
+      transactionCount: number
+      size: number
+      miner: string
+      difficulty: string
+      transactions: Array<{
+        hash: string
+        from: string
+        to: string
+        value: string
+        gasPrice: string
+      }>
+    } | null
   }>
   sampledTxs: string[]
   txDetails: Array<{
+    txHash?: string
     hashes: (string | null)[]
     consistent: boolean
     gasPrice: string
     value: string
+    from?: string
+    to?: string
+    blockNumber?: string
+    details?: Array<{
+      rpc: string
+      success: boolean
+      data: {
+        hash: string
+        from: string
+        to: string
+        value: string
+        gasPrice: string
+        gas: string
+        blockNumber: number
+        transactionIndex: number
+        nonce: number
+      } | null
+    }>
   }>
   blocksConsistent: boolean
   performance: {
@@ -72,6 +140,8 @@ function App() {
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
+  const [rpcEndpoint, setRpcEndpoint] = useState('')
+  const [showIndexer, setShowIndexer] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
@@ -169,12 +239,27 @@ function App() {
     return 'destructive'
   }
 
+  const handleViewIndexer = () => {
+    if (rpcEndpoint.trim()) {
+      setShowIndexer(true)
+    }
+  }
+
+  const handleBackToDashboard = () => {
+    setShowIndexer(false)
+  }
+
   const unacknowledgedAlerts = alerts.filter(alert => !alert.acknowledged)
   const chartData = historicalData.slice(0, 50).reverse().map(item => ({
     time: format(new Date(item.timestamp), 'HH:mm:ss'),
     score: item.daScore,
     responseTime: item.performance.totalSampleTime
   }))
+
+  // Conditional rendering logic
+  if (showIndexer) {
+    return <IndexerPage rpcEndpoint={rpcEndpoint} onBackToDashboard={handleBackToDashboard} />
+  }
 
   return (
     <div className="min-h-screen bg-background dark:bg-background p-6">
@@ -186,6 +271,24 @@ function App() {
             <p className="text-muted-foreground">Real-time Data Availability Monitoring Dashboard</p>
           </div>
           <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Input
+                placeholder="Enter RPC endpoint"
+                value={rpcEndpoint}
+                onChange={(e) => setRpcEndpoint(e.target.value)}
+                className="w-64"
+              />
+              <Button 
+                variant="default" 
+                size="sm" 
+                onClick={handleViewIndexer}
+                disabled={!rpcEndpoint.trim()}
+                className="flex items-center gap-1"
+              >
+                <Database className="h-4 w-4" />
+                View Indexer
+              </Button>
+            </div>
             <Badge variant={isConnected ? 'default' : 'destructive'} className="flex items-center gap-1">
               <Wifi className="h-3 w-3" />
               {isConnected ? 'Connected' : 'Disconnected'}
@@ -238,11 +341,12 @@ function App() {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="performance">Performance</TabsTrigger>
             <TabsTrigger value="network">Network</TabsTrigger>
             <TabsTrigger value="alerts">Alerts</TabsTrigger>
+            <TabsTrigger value="live-data">Live Data</TabsTrigger>
             {/* <TabsTrigger value="analytics">Analytics</TabsTrigger> */}
           </TabsList>
 
@@ -259,6 +363,14 @@ function App() {
                   <div className={`text-2xl font-bold ${getScoreColor(currentData?.daScore || 0)}`}>
                     {currentData?.daScore || 0}/100
                   </div>
+                  {currentData?.grade && (
+                    <Badge 
+                      variant={currentData.daScore >= 80 ? 'default' : currentData.daScore >= 60 ? 'secondary' : 'destructive'}
+                      className="mt-1"
+                    >
+                      Grade: {currentData.grade}
+                    </Badge>
+                  )}
                   <Progress 
                     value={currentData?.daScore || 0} 
                     className="mt-2"
@@ -356,6 +468,90 @@ function App() {
               </Card>
             </div>
 
+            {/* Score Breakdown */}
+            {currentData?.scoreBreakdown && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Score Breakdown</CardTitle>
+                  <CardDescription>Detailed analysis of DA health factors</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Block Consistency</span>
+                        <Badge variant="outline">{currentData.scoreBreakdown.blockConsistency}</Badge>
+                      </div>
+                      <Progress value={(currentData.scoreFactors?.blockConsistency || 0) / 25 * 100} className="h-2" />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">TX Consistency</span>
+                        <Badge variant="outline">{currentData.scoreBreakdown.txConsistency}</Badge>
+                      </div>
+                      <Progress value={(currentData.scoreFactors?.txConsistency || 0) / 20 * 100} className="h-2" />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">RPC Health</span>
+                        <Badge variant="outline">{currentData.scoreBreakdown.rpcHealth}</Badge>
+                      </div>
+                      <Progress value={(currentData.scoreFactors?.rpcHealth || 0) / 20 * 100} className="h-2" />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Response Time</span>
+                        <Badge variant="outline">{currentData.scoreBreakdown.responseTime}</Badge>
+                      </div>
+                      <Progress value={(currentData.scoreFactors?.responseTime || 0) / 15 * 100} className="h-2" />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Network Reliability</span>
+                        <Badge variant="outline">{currentData.scoreBreakdown.networkReliability}</Badge>
+                      </div>
+                      <Progress value={(currentData.scoreFactors?.networkReliability || 0) / 10 * 100} className="h-2" />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Data Freshness</span>
+                        <Badge variant="outline">{currentData.scoreBreakdown.dataFreshness}</Badge>
+                      </div>
+                      <Progress value={(currentData.scoreFactors?.dataFreshness || 0) / 5 * 100} className="h-2" />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">Error Rate</span>
+                        <Badge variant={(currentData.scoreFactors?.errorPenalty || 0) < 0 ? 'destructive' : 'outline'}>
+                          {currentData.scoreBreakdown.errorPenalty}
+                        </Badge>
+                      </div>
+                      <Progress 
+                        value={Math.abs(currentData.scoreFactors?.errorPenalty || 0) / 5 * 100} 
+                        className="h-2" 
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-bold">Total Score</span>
+                        <Badge variant={currentData.daScore >= 80 ? 'default' : currentData.daScore >= 60 ? 'secondary' : 'destructive'}>
+                          {currentData.daScore}/100
+                        </Badge>
+                      </div>
+                      <Progress value={currentData.daScore} className="h-3" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Block Details */}
             <Card>
               <CardHeader>
@@ -418,6 +614,11 @@ function App() {
           {/* Analytics Tab */}
           <TabsContent value="analytics">
             <AnalyticsTab historicalData={historicalData} currentData={currentData} />
+          </TabsContent>
+
+          {/* Live Data Tab */}
+          <TabsContent value="live-data">
+            <LiveDataTab data={currentData || {}} />
           </TabsContent>
 
           {/* More tabs will be implemented next... */}

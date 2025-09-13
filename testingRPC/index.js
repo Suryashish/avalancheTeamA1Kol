@@ -28,7 +28,11 @@ const networkHealth = {
 // Replace these with Avalanche RPC endpoints for your subnets
 const RPCS = [
     "https://api.avax-test.network/ext/bc/C/rpc",      // Avalanche Fuji Testnet (official)
-    "https://avalanche-fuji-c-chain.publicnode.com",   // PublicNode Fuji Testnet
+    "https://avalanche-fuji-c-chain.publicnode.com"   // PublicNode Fuji Testnet
+    // "https://subnets-test.avax.network/c-chain/tx"
+    // "https://api.avax.network/ext/bc/X",
+    // "https://api.avax.network/ext/bc/P",
+    // "https://rpc.ankr.com/avalanche_fuji"
 ];
 
 // Alert thresholds
@@ -177,16 +181,99 @@ function compareTxs(txArr) {
   return unique.size === 1;
 }
 
-// DA scoring
-function scoreDA(blocks, txResults) {
+// Enhanced DA scoring with multiple factors
+function scoreDA(blocks, txResults, performanceMetrics, networkHealth) {
   let score = 0;
-  if(compareBlocks(blocks)) score += 50;
-
-  let consistentCount = txResults.filter(compareTxs).length;
-  let total = txResults.length || 1;
-  score += Math.floor((consistentCount / total) * 50);
-
-  return score;
+  const factors = {};
+  
+  // 1. Block Consistency (25 points max)
+  const validBlocks = blocks.filter(Boolean);
+  if (validBlocks.length === 0) {
+    factors.blockConsistency = 0;
+  } else if (compareBlocks(blocks)) {
+    factors.blockConsistency = 25;
+  } else {
+    // Partial score based on how many blocks agree
+    const blockHashes = validBlocks.map(b => b.hash);
+    const hashCounts = {};
+    blockHashes.forEach(hash => {
+      hashCounts[hash] = (hashCounts[hash] || 0) + 1;
+    });
+    const maxCount = Math.max(...Object.values(hashCounts));
+    factors.blockConsistency = Math.floor((maxCount / validBlocks.length) * 25);
+  }
+  
+  // 2. Transaction Consistency (20 points max)
+  if (txResults.length === 0) {
+    factors.txConsistency = 20; // No transactions to verify = perfect
+  } else {
+    const consistentCount = txResults.filter(compareTxs).length;
+    factors.txConsistency = Math.floor((consistentCount / txResults.length) * 20);
+  }
+  
+  // 3. RPC Health & Availability (20 points max)
+  const totalRpcs = Object.keys(performanceMetrics).length;
+  const healthyRpcs = Object.values(performanceMetrics).filter(rpc => rpc.isHealthy).length;
+  factors.rpcHealth = Math.floor((healthyRpcs / totalRpcs) * 20);
+  
+  // 4. Response Time Performance (15 points max)
+  const avgResponseTime = Object.values(performanceMetrics).reduce((acc, rpc) => 
+    acc + rpc.averageResponseTime, 0) / totalRpcs;
+  
+  if (avgResponseTime < 500) factors.responseTime = 15;
+  else if (avgResponseTime < 1000) factors.responseTime = 12;
+  else if (avgResponseTime < 2000) factors.responseTime = 8;
+  else if (avgResponseTime < 5000) factors.responseTime = 4;
+  else factors.responseTime = 0;
+  
+  // 5. Network Reliability (10 points max)
+  const successRate = networkHealth.totalChecks > 0 ? 
+    (networkHealth.successfulChecks / networkHealth.totalChecks) : 0;
+  factors.networkReliability = Math.floor(successRate * 10);
+  
+  // 6. Data Freshness (5 points max)
+  const validBlocksWithTimestamp = validBlocks.filter(b => b.timestamp);
+  if (validBlocksWithTimestamp.length > 0) {
+    const latestBlockTime = Math.max(...validBlocksWithTimestamp.map(b => parseInt(b.timestamp) * 1000));
+    const timeDiff = Date.now() - latestBlockTime;
+    
+    if (timeDiff < 30000) factors.dataFreshness = 5; // < 30 seconds
+    else if (timeDiff < 60000) factors.dataFreshness = 4; // < 1 minute
+    else if (timeDiff < 300000) factors.dataFreshness = 2; // < 5 minutes
+    else factors.dataFreshness = 0;
+  } else {
+    factors.dataFreshness = 0;
+  }
+  
+  // 7. Error Rate Penalty (up to -5 points)
+  const totalRequests = Object.values(performanceMetrics).reduce((acc, rpc) => 
+    acc + rpc.totalRequests, 0);
+  const totalFailures = Object.values(performanceMetrics).reduce((acc, rpc) => 
+    acc + rpc.failedRequests, 0);
+  
+  const errorRate = totalRequests > 0 ? (totalFailures / totalRequests) : 0;
+  factors.errorPenalty = Math.floor(errorRate * -5);
+  
+  // Calculate final score
+  score = Object.values(factors).reduce((acc, val) => acc + val, 0);
+  
+  // Ensure score is between 0 and 100
+  score = Math.max(0, Math.min(100, score));
+  
+  return {
+    totalScore: score,
+    factors: factors,
+    breakdown: {
+      blockConsistency: `${factors.blockConsistency}/25`,
+      txConsistency: `${factors.txConsistency}/20`,
+      rpcHealth: `${factors.rpcHealth}/20`,
+      responseTime: `${factors.responseTime}/15`,
+      networkReliability: `${factors.networkReliability}/10`,
+      dataFreshness: `${factors.dataFreshness}/5`,
+      errorPenalty: `${factors.errorPenalty}/0`
+    },
+    grade: score >= 90 ? 'A+' : score >= 80 ? 'A' : score >= 70 ? 'B' : score >= 60 ? 'C' : score >= 50 ? 'D' : 'F'
+  };
 }
 
 // Main sampling function with enhanced analytics
@@ -214,13 +301,16 @@ async function sampleLatestBlock() {
     txResults.push(txFromAll);
   }
 
-  const daScore = scoreDA(blocks, txResults);
+  const daScoreResult = scoreDA(blocks, txResults, rpcPerformance, networkHealth);
   const totalTime = Date.now() - startTime;
   
-  // Create comprehensive result
+  // Create comprehensive result with detailed raw data
   const result = {
     timestamp: new Date(),
-    daScore,
+    daScore: daScoreResult.totalScore,
+    scoreBreakdown: daScoreResult.breakdown,
+    scoreFactors: daScoreResult.factors,
+    grade: daScoreResult.grade,
     blockDetails: blocks.map((b, i) => ({
       rpc: RPCS[i],
       number: b?.number,
@@ -229,14 +319,60 @@ async function sampleLatestBlock() {
       timestamp: b?.timestamp ? new Date(parseInt(b.timestamp) * 1000) : null,
       gasUsed: b?.gasUsed,
       gasLimit: b?.gasLimit,
-      size: b?.size
+      size: b?.size,
+      parentHash: b?.parentHash,
+      miner: b?.miner,
+      difficulty: b?.difficulty,
+      extraData: b?.extraData
+    })),
+    rawBlocks: blocks.map((b, i) => ({
+      rpc: RPCS[i],
+      success: b !== null,
+      data: b ? {
+        number: parseInt(b.number, 16),
+        hash: b.hash,
+        parentHash: b.parentHash,
+        timestamp: new Date(parseInt(b.timestamp) * 1000).toISOString(),
+        gasUsed: parseInt(b.gasUsed || '0', 16),
+        gasLimit: parseInt(b.gasLimit || '0', 16),
+        transactionCount: b.transactions?.length || 0,
+        size: parseInt(b.size || '0', 16),
+        miner: b.miner,
+        difficulty: b.difficulty,
+        transactions: b.transactions?.slice(0, 3).map(tx => ({
+          hash: tx.hash || tx,
+          from: tx.from,
+          to: tx.to,
+          value: tx.value ? parseInt(tx.value, 16).toString() : '0',
+          gasPrice: tx.gasPrice ? parseInt(tx.gasPrice, 16).toString() : '0'
+        })) || []
+      } : null
     })),
     sampledTxs: txsSample,
     txDetails: txResults.map((txArr, i) => ({
+      txHash: txsSample[i],
       hashes: txArr.map(tx => tx?.hash || null),
       consistent: compareTxs(txArr),
       gasPrice: txArr[0]?.gasPrice,
-      value: txArr[0]?.value
+      value: txArr[0]?.value,
+      from: txArr[0]?.from,
+      to: txArr[0]?.to,
+      blockNumber: txArr[0]?.blockNumber,
+      details: txArr.map((tx, rpcIndex) => ({
+        rpc: RPCS[rpcIndex],
+        success: tx !== null,
+        data: tx ? {
+          hash: tx.hash,
+          from: tx.from,
+          to: tx.to,
+          value: tx.value ? parseInt(tx.value, 16).toString() : '0',
+          gasPrice: tx.gasPrice ? parseInt(tx.gasPrice, 16).toString() : '0',
+          gas: tx.gas ? parseInt(tx.gas, 16).toString() : '0',
+          blockNumber: parseInt(tx.blockNumber || '0', 16),
+          transactionIndex: parseInt(tx.transactionIndex || '0', 16),
+          nonce: parseInt(tx.nonce || '0', 16)
+        } : null
+      }))
     })),
     blocksConsistent: compareBlocks(blocks),
     performance: {
@@ -248,7 +384,7 @@ async function sampleLatestBlock() {
   
   // Update network health
   networkHealth.totalChecks++;
-  if (daScore > 0) networkHealth.successfulChecks++;
+  if (result.daScore > 0) networkHealth.successfulChecks++;
   networkHealth.lastCheck = new Date();
   
   // Store in historical data
@@ -256,10 +392,18 @@ async function sampleLatestBlock() {
   if (historicalData.length > 1000) historicalData.pop();
   
   // Check for alerts
-  if (daScore <= ALERT_THRESHOLDS.criticalScore) {
-    createAlert('low_da_score', `Critical DA score: ${daScore}/100`, 'critical');
-  } else if (daScore <= ALERT_THRESHOLDS.lowScore) {
-    createAlert('low_da_score', `Low DA score: ${daScore}/100`, 'warning');
+  if (result.daScore <= ALERT_THRESHOLDS.criticalScore) {
+    createAlert('low_da_score', `Critical DA score: ${result.daScore}/100 (Grade: ${result.grade})`, 'critical');
+  } else if (result.daScore <= ALERT_THRESHOLDS.lowScore) {
+    createAlert('low_da_score', `Low DA score: ${result.daScore}/100 (Grade: ${result.grade})`, 'warning');
+  }
+  
+  // Additional alerts based on specific factors
+  if (result.scoreFactors.rpcHealth < 10) {
+    createAlert('rpc_health', `Poor RPC health: ${result.scoreBreakdown.rpcHealth}`, 'warning');
+  }
+  if (result.scoreFactors.responseTime < 8) {
+    createAlert('high_latency', `High response time detected: ${result.scoreBreakdown.responseTime}`, 'warning');
   }
   
   // Broadcast to WebSocket clients

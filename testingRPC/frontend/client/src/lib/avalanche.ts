@@ -1,10 +1,5 @@
 import { ethers } from 'ethers';
 
-// Avalanche C-Chain RPC endpoint
-// const AVALANCHE_RPC_URL = 'https://api.avax.network/ext/bc/C/rpc';
-// const AVALANCHE_RPC_URL = 'https://api.avax-test.network/ext/bc/C/rpc';
-const AVALANCHE_RPC_URL = 'https://avalanche-fuji-c-chain.publicnode.com';
-
 export interface Transaction {
   hash: string;
   blockNumber: number;
@@ -15,6 +10,32 @@ export interface Transaction {
   gasUsed?: string;
   timestamp: number;
   status?: number;
+}
+
+export interface DetailedTransaction extends Transaction {
+  nonce: number;
+  gasLimit: string;
+  maxFeePerGas?: string;
+  maxPriorityFeePerGas?: string;
+  type: number;
+  data: string;
+  logs: TransactionLog[];
+  cumulativeGasUsed?: string;
+  effectiveGasPrice?: string;
+  transactionIndex: number;
+  confirmations: number;
+}
+
+export interface TransactionLog {
+  address: string;
+  topics: readonly string[];
+  data: string;
+  blockNumber: number;
+  transactionHash: string;
+  transactionIndex: number;
+  blockHash: string;
+  logIndex: number;
+  removed: boolean;
 }
 
 export interface Block {
@@ -29,9 +50,21 @@ export interface Block {
 
 export class AvalancheService {
   private provider: ethers.JsonRpcProvider;
+  private rpcUrl: string;
 
-  constructor() {
-    this.provider = new ethers.JsonRpcProvider(AVALANCHE_RPC_URL);
+  constructor(rpcUrl: string) {
+    this.rpcUrl = rpcUrl;
+    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+  }
+
+  // Method to update RPC URL if needed
+  updateRpcUrl(newRpcUrl: string) {
+    this.rpcUrl = newRpcUrl;
+    this.provider = new ethers.JsonRpcProvider(newRpcUrl);
+  }
+
+  getRpcUrl(): string {
+    return this.rpcUrl;
   }
 
   async getLatestBlockNumber(): Promise<number> {
@@ -50,7 +83,7 @@ export class AvalancheService {
 
       return {
         number: block.number,
-        hash: block.hash,
+        hash: block.hash || '',
         timestamp: block.timestamp,
         transactionCount: block.transactions.length,
         gasUsed: block.gasUsed.toString(),
@@ -84,10 +117,60 @@ export class AvalancheService {
         gasPrice: ethers.formatUnits(tx.gasPrice || 0, 'gwei'),
         gasUsed: receipt?.gasUsed?.toString(),
         timestamp: block?.timestamp || 0,
-        status: receipt?.status
+        status: receipt?.status || undefined
       };
     } catch (error) {
       console.error(`Error fetching transaction ${txHash}:`, error);
+      return null;
+    }
+  }
+
+  async getDetailedTransaction(txHash: string): Promise<DetailedTransaction | null> {
+    try {
+      const [tx, receipt, block] = await Promise.all([
+        this.provider.getTransaction(txHash),
+        this.provider.getTransactionReceipt(txHash),
+        this.provider.getTransaction(txHash).then(tx => 
+          tx ? this.provider.getBlock(tx.blockNumber!) : null
+        )
+      ]);
+
+      if (!tx || !receipt || !block) return null;
+
+      return {
+        hash: tx.hash,
+        blockNumber: tx.blockNumber!,
+        from: tx.from,
+        to: tx.to,
+        value: ethers.formatEther(tx.value),
+        gasPrice: ethers.formatUnits(tx.gasPrice || 0, 'gwei'),
+        gasUsed: receipt.gasUsed.toString(),
+        timestamp: block.timestamp,
+        status: receipt.status || undefined,
+        nonce: tx.nonce,
+        gasLimit: tx.gasLimit.toString(),
+        maxFeePerGas: tx.maxFeePerGas ? ethers.formatUnits(tx.maxFeePerGas, 'gwei') : undefined,
+        maxPriorityFeePerGas: tx.maxPriorityFeePerGas ? ethers.formatUnits(tx.maxPriorityFeePerGas, 'gwei') : undefined,
+        type: tx.type || 0,
+        data: tx.data,
+        logs: receipt.logs.map(log => ({
+          address: log.address,
+          topics: log.topics,
+          data: log.data,
+          blockNumber: log.blockNumber,
+          transactionHash: log.transactionHash,
+          transactionIndex: log.transactionIndex,
+          blockHash: log.blockHash,
+          logIndex: log.index,
+          removed: log.removed
+        })),
+        cumulativeGasUsed: receipt.cumulativeGasUsed.toString(),
+        effectiveGasPrice: (receipt as any).effectiveGasPrice ? ethers.formatUnits((receipt as any).effectiveGasPrice, 'gwei') : undefined,
+        transactionIndex: receipt.index,
+        confirmations: await tx.confirmations()
+      };
+    } catch (error) {
+      console.error(`Error fetching detailed transaction ${txHash}:`, error);
       return null;
     }
   }
@@ -150,4 +233,10 @@ export class AvalancheService {
   }
 }
 
-export const avalancheService = new AvalancheService();
+// Create service factory function
+export function createAvalancheService(rpcUrl: string): AvalancheService {
+  return new AvalancheService(rpcUrl);
+}
+
+// Default service instance (will be replaced when RPC is configured)
+export let avalancheService: AvalancheService;

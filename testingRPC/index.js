@@ -25,8 +25,8 @@ const networkHealth = {
   successfulChecks: 0
 };
 
-// Replace these with Avalanche RPC endpoints for your subnets
-const RPCS = [
+// Default RPC endpoints (can be overridden via API)
+let RPCS = [
     "https://api.avax-test.network/ext/bc/C/rpc",      // Avalanche Fuji Testnet (official)
     "https://avalanche-fuji-c-chain.publicnode.com"   // PublicNode Fuji Testnet
     // "https://subnets-test.avax.network/c-chain/tx"
@@ -44,7 +44,7 @@ const ALERT_THRESHOLDS = {
 };
 
 // Track RPC performance
-const rpcPerformance = RPCS.reduce((acc, rpc) => {
+let rpcPerformance = RPCS.reduce((acc, rpc) => {
   acc[rpc] = {
     averageResponseTime: 0,
     totalRequests: 0,
@@ -456,6 +456,71 @@ wss.on('connection', (ws) => {
 });
 
 // API Routes
+// Configure RPC endpoints
+app.post("/api/configure", (req, res) => {
+  try {
+    const { rpcEndpoints } = req.body;
+    
+    if (!rpcEndpoints || !Array.isArray(rpcEndpoints) || rpcEndpoints.length === 0) {
+      return res.status(400).json({ error: "rpcEndpoints array is required" });
+    }
+
+    // Validate URLs
+    for (const rpc of rpcEndpoints) {
+      try {
+        new URL(rpc);
+      } catch (error) {
+        return res.status(400).json({ error: `Invalid URL: ${rpc}` });
+      }
+    }
+
+    // Update RPCS array
+    RPCS = [...rpcEndpoints];
+    
+    // Reset performance tracking for new RPCs
+    rpcPerformance = RPCS.reduce((acc, rpc) => {
+      acc[rpc] = {
+        averageResponseTime: 0,
+        totalRequests: 0,
+        failedRequests: 0,
+        consecutiveFailures: 0,
+        lastSuccessTime: null,
+        isHealthy: true
+      };
+      return acc;
+    }, {});
+
+    // Clear historical data to start fresh
+    historicalData.length = 0;
+    alerts.length = 0;
+    
+    // Reset network health
+    networkHealth.totalChecks = 0;
+    networkHealth.successfulChecks = 0;
+    networkHealth.uptime = 0;
+
+    console.log(`RPC endpoints updated:`, RPCS);
+    
+    res.json({ 
+      success: true, 
+      message: "RPC endpoints configured successfully",
+      rpcEndpoints: RPCS 
+    });
+  } catch (error) {
+    console.error('Error configuring RPCs:', error);
+    res.status(500).json({ error: "Failed to configure RPC endpoints" });
+  }
+});
+
+// Get current RPC configuration
+app.get("/api/configuration", (req, res) => {
+  res.json({
+    rpcEndpoints: RPCS,
+    rpcPerformance: rpcPerformance,
+    networkHealth: networkHealth
+  });
+});
+
 // Express API to get DA score
 app.get("/da", async (req,res)=>{
   try{
@@ -572,4 +637,4 @@ server.listen(PORT, ()=> console.log(`DA Watchdog API running on http://localhos
 setInterval(async ()=>{
   const result = await sampleLatestBlock();
   console.log("DA Health Sample:", result.daScore);
-}, 10000);
+}, 2000);

@@ -3,12 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
-import { AlertTriangle, Activity, Wifi, Database, Clock, Download, XCircle } from 'lucide-react'
+import { AlertTriangle, Activity, Wifi, Database, Clock, Download } from 'lucide-react'
 import { format } from 'date-fns'
 import { PerformanceTab } from '@/components/PerformanceTab'
 import { AlertsTab } from '@/components/AlertsTab'
@@ -16,6 +15,7 @@ import { NetworkTab } from '@/components/NetworkTab'
 import { AnalyticsTab } from '@/components/AnalyticsTab'
 import { LiveDataTab } from '@/components/tabs/LiveDataTab'
 import { IndexerPage } from '@/components/IndexerPage'
+import { ConfigurationPage } from '@/components/ConfigurationPage'
 import { ModeToggle } from '@/components/mode-toggle'
 import './App.css'
 
@@ -140,9 +140,20 @@ function App() {
   const [alerts, setAlerts] = useState<AlertItem[]>([])
   const [isConnected, setIsConnected] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
-  const [rpcEndpoint, setRpcEndpoint] = useState('')
   const [showIndexer, setShowIndexer] = useState(false)
+  const [isConfigured, setIsConfigured] = useState(false)
+  const [rpcEndpoints, setRpcEndpoints] = useState<string[]>([])
+  const [primaryRpc, setPrimaryRpc] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
+
+  // Handle configuration completion
+  const handleConfigurationComplete = (endpoints: string[], primary: string) => {
+    setRpcEndpoints(endpoints)
+    setPrimaryRpc(primary)
+    setIsConfigured(true)
+    
+    console.log('Configuration completed:', { endpoints, primary })
+  }
 
   useEffect(() => {
     // Establish WebSocket connection
@@ -233,14 +244,8 @@ function App() {
     return 'text-red-600'
   }
 
-  const getScoreBadgeVariant = (score: number): "default" | "secondary" | "destructive" | "outline" => {
-    if (score >= 80) return 'default'
-    if (score >= 50) return 'secondary'
-    return 'destructive'
-  }
-
   const handleViewIndexer = () => {
-    if (rpcEndpoint.trim()) {
+    if (primaryRpc.trim()) {
       setShowIndexer(true)
     }
   }
@@ -256,9 +261,14 @@ function App() {
     responseTime: item.performance.totalSampleTime
   }))
 
-  // Conditional rendering logic
+  // Show configuration page if not configured
+  if (!isConfigured) {
+    return <ConfigurationPage onConfigurationComplete={handleConfigurationComplete} />
+  }
+
+  // Conditional rendering logic for main app
   if (showIndexer) {
-    return <IndexerPage rpcEndpoint={rpcEndpoint} onBackToDashboard={handleBackToDashboard} />
+    return <IndexerPage rpcEndpoint={primaryRpc} onBackToDashboard={handleBackToDashboard} />
   }
 
   return (
@@ -269,26 +279,25 @@ function App() {
           <div>
             <h1 className="text-3xl font-bold text-foreground">Avalanche DA Watchdog</h1>
             <p className="text-muted-foreground">Real-time Data Availability Monitoring Dashboard</p>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="outline" className="text-xs">
+                Monitoring {rpcEndpoints.length} RPC{rpcEndpoints.length !== 1 ? 's' : ''}
+              </Badge>
+              <Badge variant="secondary" className="text-xs">
+                Primary: {primaryRpc.split('/').pop()}
+              </Badge>
+            </div>
           </div>
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Input
-                placeholder="Enter RPC endpoint"
-                value={rpcEndpoint}
-                onChange={(e) => setRpcEndpoint(e.target.value)}
-                className="w-64"
-              />
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={handleViewIndexer}
-                disabled={!rpcEndpoint.trim()}
-                className="flex items-center gap-1"
-              >
-                <Database className="h-4 w-4" />
-                View Indexer
-              </Button>
-            </div>
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={handleViewIndexer}
+              className="flex items-center gap-1"
+            >
+              <Database className="h-4 w-4" />
+              View Indexer
+            </Button>
             <Badge variant={isConnected ? 'default' : 'destructive'} className="flex items-center gap-1">
               <Wifi className="h-3 w-3" />
               {isConnected ? 'Connected' : 'Disconnected'}
@@ -618,7 +627,7 @@ function App() {
 
           {/* Live Data Tab */}
           <TabsContent value="live-data">
-            <LiveDataTab data={currentData || {}} />
+            <LiveDataTab data={currentData || { rawBlocks: [], txDetails: [] }} />
           </TabsContent>
 
           {/* More tabs will be implemented next... */}

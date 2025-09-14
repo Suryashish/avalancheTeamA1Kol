@@ -10,7 +10,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Transaction } from '@/lib/avalanche';
+import { Dialog } from '@/components/ui/dialog';
+import type { Transaction, DetailedTransaction, AvalancheService } from '@/lib/avalanche';
+import { TransactionDetails } from './TransactionDetails';
 import { 
   Copy, 
   Check, 
@@ -20,18 +22,23 @@ import {
   TrendingDown,
   Clock,
   Hash,
-  Wallet
+  Wallet,
+  Eye
 } from 'lucide-react';
 
 interface TransactionTableProps {
   transactions: Transaction[];
   title?: string;
+  avalancheService: AvalancheService;
 }
 
-export function TransactionTable({ transactions, title = "Transactions" }: TransactionTableProps) {
+export function TransactionTable({ transactions, title = "Transactions", avalancheService }: TransactionTableProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [sortField, setSortField] = useState<keyof Transaction>('timestamp');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [showDetails, setShowDetails] = useState(false);
+  const [detailedTransaction, setDetailedTransaction] = useState<DetailedTransaction | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -66,6 +73,23 @@ export function TransactionTable({ transactions, title = "Transactions" }: Trans
     if (numValue === 0) return '0';
     if (numValue < 0.001) return '<0.001';
     return numValue.toFixed(4);
+  };
+
+  const handleViewDetails = async (transactionHash: string) => {
+    setLoading(transactionHash);
+    try {
+      const detailed = await avalancheService.getDetailedTransaction(transactionHash);
+      if (detailed) {
+        setDetailedTransaction(detailed);
+        setShowDetails(true);
+      } else {
+        console.error('Failed to fetch detailed transaction');
+      }
+    } catch (error) {
+      console.error('Error fetching transaction details:', error);
+    } finally {
+      setLoading(null);
+    }
   };
 
   const handleSort = (field: keyof Transaction) => {
@@ -243,7 +267,21 @@ export function TransactionTable({ transactions, title = "Transactions" }: Trans
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handleViewDetails(transaction.hash)}
+                        disabled={loading === transaction.hash}
+                        title="View Details"
+                      >
+                        {loading === transaction.hash ? (
+                          <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                        ) : (
+                          <Eye className="h-3 w-3" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => window.open(`https://snowtrace.io/tx/${transaction.hash}`, '_blank')}
+                        title="View on Snowtrace"
                       >
                         <ExternalLink className="h-3 w-3" />
                       </Button>
@@ -262,6 +300,15 @@ export function TransactionTable({ transactions, title = "Transactions" }: Trans
           </div>
         )}
       </CardContent>
+
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        {detailedTransaction && (
+          <TransactionDetails
+            transaction={detailedTransaction}
+            onBack={() => setShowDetails(false)}
+          />
+        )}
+      </Dialog>
     </Card>
   );
 }

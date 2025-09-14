@@ -6,7 +6,7 @@ import { NetworkStats } from '@/components/indexer/NetworkStats';
 import { LatestTransactions } from '@/components/indexer/LatestTransactions';
 import { TransactionSearch } from '@/components/indexer/TransactionSearch';
 import { Badge } from '@/components/ui/badge';
-import { avalancheService } from '@/lib/avalanche';
+import { createAvalancheService } from '@/lib/avalanche';
 import { Search, Activity, BarChart3, Mountain, Zap } from 'lucide-react';
 
 interface IndexerPageProps {
@@ -21,6 +21,7 @@ export function IndexerPage({ rpcEndpoint, onBackToDashboard }: IndexerPageProps
     blockTime: '',
     network: 'Avalanche C-Chain'
   });
+  const [avalancheService] = useState(() => createAvalancheService(rpcEndpoint));
 
   useEffect(() => {
     const fetchNetworkStats = async () => {
@@ -35,10 +36,10 @@ export function IndexerPage({ rpcEndpoint, onBackToDashboard }: IndexerPageProps
     fetchNetworkStats();
     
     // Refresh network stats every 30 seconds
-    const interval = setInterval(fetchNetworkStats, 30000);
+    const interval = setInterval(fetchNetworkStats, 1000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [avalancheService]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -106,11 +107,11 @@ export function IndexerPage({ rpcEndpoint, onBackToDashboard }: IndexerPageProps
           </TabsList>
 
           <TabsContent value="transactions" className="mt-0">
-            <LatestTransactions />
+            <LatestTransactions avalancheService={avalancheService} />
           </TabsContent>
 
           <TabsContent value="search" className="mt-0">
-            <TransactionSearch />
+            <TransactionSearch avalancheService={avalancheService} />
           </TabsContent>
 
           <TabsContent value="analytics" className="mt-0">

@@ -4,10 +4,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Loader2, Hash, AlertCircle } from 'lucide-react';
 import { TransactionTable } from './TransactionTable';
-import { avalancheService } from '@/lib/avalanche';
-import type { Transaction } from '@/lib/avalanche';
+import type { Transaction, AvalancheService } from '@/lib/avalanche';
 
-export function TransactionSearch() {
+interface TransactionSearchProps {
+  avalancheService: AvalancheService;
+}
+
+export function TransactionSearch({ avalancheService }: TransactionSearchProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(false);
@@ -116,6 +119,7 @@ export function TransactionSearch() {
         <TransactionTable 
           transactions={[transaction]} 
           title="Transaction Details"
+          avalancheService={avalancheService}
         />
       )}
     </div>

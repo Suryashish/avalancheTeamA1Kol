@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { TransactionTable } from './TransactionTable';
-import { avalancheService } from '@/lib/avalanche';
-import type { Transaction } from '@/lib/avalanche';
+import type { Transaction, AvalancheService } from '@/lib/avalanche';
 import { RefreshCw, Loader2, Activity } from 'lucide-react';
 
-export function LatestTransactions() {
+interface LatestTransactionsProps {
+  avalancheService: AvalancheService;
+}
+
+export function LatestTransactions({ avalancheService }: LatestTransactionsProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -19,7 +22,7 @@ export function LatestTransactions() {
         setLoading(true);
       }
 
-      const latestTxs = await avalancheService.getLatestTransactions(15);
+      const latestTxs = await avalancheService.getLatestTransactions(10);
       setTransactions(latestTxs);
     } catch (error) {
       console.error('Error fetching latest transactions:', error);
@@ -33,10 +36,10 @@ export function LatestTransactions() {
     fetchTransactions();
     
     // Auto-refresh every 30 seconds
-    const interval = setInterval(() => fetchTransactions(true), 30000);
+    const interval = setInterval(() => fetchTransactions(true), 2000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [avalancheService]);
 
   const handleRefresh = () => {
     fetchTransactions(true);
@@ -88,6 +91,7 @@ export function LatestTransactions() {
       <TransactionTable 
         transactions={transactions} 
         title="Latest Transactions"
+        avalancheService={avalancheService}
       />
     </div>
   );

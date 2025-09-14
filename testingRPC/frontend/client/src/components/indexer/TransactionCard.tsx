@@ -1,16 +1,22 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { Transaction } from '@/lib/avalanche';
-import { ExternalLink, Copy, Check } from 'lucide-react';
+import { Dialog } from '@/components/ui/dialog';
+import type { Transaction, DetailedTransaction, AvalancheService } from '@/lib/avalanche';
+import { ExternalLink, Copy, Check, Eye } from 'lucide-react';
 import { useState } from 'react';
+import { TransactionDetails } from './TransactionDetails';
 
 interface TransactionCardProps {
   transaction: Transaction;
+  avalancheService: AvalancheService;
 }
 
-export function TransactionCard({ transaction }: TransactionCardProps) {
+export function TransactionCard({ transaction, avalancheService }: TransactionCardProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [detailedTransaction, setDetailedTransaction] = useState<DetailedTransaction | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -19,6 +25,28 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
       console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const handleViewDetails = async () => {
+    if (!avalancheService) {
+      console.error('Avalanche service not initialized');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const detailed = await avalancheService.getDetailedTransaction(transaction.hash);
+      if (detailed) {
+        setDetailedTransaction(detailed);
+        setShowDetails(true);
+      } else {
+        console.error('Failed to fetch detailed transaction');
+      }
+    } catch (error) {
+      console.error('Error fetching transaction details:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,6 +85,18 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
                 <Check className="h-4 w-4" />
               ) : (
                 <Copy className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleViewDetails}
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <Eye className="h-4 w-4" />
               )}
             </Button>
             <Button
@@ -140,6 +180,15 @@ export function TransactionCard({ transaction }: TransactionCardProps) {
           </div>
         )}
       </CardContent>
+
+      <Dialog open={showDetails} onOpenChange={setShowDetails}>
+        {detailedTransaction && (
+          <TransactionDetails
+            transaction={detailedTransaction}
+            onBack={() => setShowDetails(false)}
+          />
+        )}
+      </Dialog>
     </Card>
   );
 }

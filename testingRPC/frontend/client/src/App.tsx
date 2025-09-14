@@ -367,7 +367,7 @@ export function AppContext() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">DA Health Score</CardTitle>
+                  <CardTitle className="text-sm font-medium">RPC Health Score</CardTitle>
                   <Activity className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -433,7 +433,7 @@ export function AppContext() {
               <Card>
                 <CardHeader>
                   <CardTitle>DA Score Trend</CardTitle>
-                  <CardDescription>Real-time DA health score over time</CardDescription>
+                  <CardDescription>Real-time RPC health score over time</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>

@@ -160,7 +160,7 @@ export function AppContext() {
   useEffect(() => {
     // Establish WebSocket connection
     const connectWebSocket = () => {
-      const ws = new WebSocket('wss://avalanche-team-a1-kol-server.vercel.app')
+      const ws = new WebSocket('wss://avalancheteama1kol.onrender.com')
       wsRef.current = ws
 
       ws.onopen = () => {
@@ -217,7 +217,7 @@ export function AppContext() {
 
   const acknowledgeAlert = async (alertId: string) => {
     try {
-      await fetch(`https://avalanche-team-a1-kol-server.vercel.app/api/alerts/${alertId}/acknowledge`, {
+      await fetch(`https://avalancheteama1kol.onrender.com/api/alerts/${alertId}/acknowledge`, {
         method: 'POST'
       })
     } catch (error) {
@@ -227,7 +227,7 @@ export function AppContext() {
 
   const exportData = async (format: 'json' | 'csv') => {
     try {
-      const response = await fetch(`https://avalanche-team-a1-kol-server.vercel.app/api/export?format=${format}`)
+      const response = await fetch(`https://avalancheteama1kol.onrender.com/api/export?format=${format}`)
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')

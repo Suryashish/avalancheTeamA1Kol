@@ -1,4 +1,4 @@
-import React from 'react'
+// import React from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
@@ -98,12 +98,12 @@ interface LiveDataTabProps {
   }
 }
 
-const formatHexValue = (value: string | number) => {
-  if (typeof value === 'string' && value.startsWith('0x')) {
-    return value
-  }
-  return `0x${value.toString(16)}`
-}
+// const formatHexValue = (value: string | number) => {
+//   if (typeof value === 'string' && value.startsWith('0x')) {
+//     return value
+//   }
+//   return `0x${value.toString(16)}`
+// }
 
 const formatWei = (wei: string) => {
   if (!wei || wei === '0x0' || wei === '0') return '0 AVAX'

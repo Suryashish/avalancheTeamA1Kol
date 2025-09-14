@@ -279,7 +279,7 @@ export function AppContext() {
         {/* Header */}
         <div className="flex p-4 justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-foreground bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">Avalanche custom L1 Watcher & Explorer</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">Avalanche custom L1 Watcher & Explorer</h1>
             <p className="text-muted-foreground ">Real-time custom L1 Availability Monitoring & Explorer</p>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="outline" className="text-xs">

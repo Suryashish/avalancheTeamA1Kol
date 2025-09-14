@@ -1,9 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+// import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts'
-import { TrendingUp, BarChart3, PieChart, Download } from 'lucide-react'
+import { TrendingUp, BarChart3, PieChart } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface AnalyticsTabProps {
@@ -37,12 +37,12 @@ export function AnalyticsTab({ historicalData, currentData }: AnalyticsTabProps)
   ]
 
   // Performance trends
-  const performanceTrend = chartData.map(item => ({
-    time: item.time,
-    samples: historicalData.length,
-    avgScore: avgScore,
-    currentScore: item.score
-  }))
+  // const performanceTrend = chartData.map(item => ({
+  //   time: item.time,
+  //   samples: historicalData.length,
+  //   avgScore: avgScore,
+  //   currentScore: item.score
+  // }))
 
   // RPC performance analysis
   const rpcAnalysis = currentData.performance.rpcMetrics ? 
@@ -230,7 +230,7 @@ export function AnalyticsTab({ historicalData, currentData }: AnalyticsTabProps)
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className={parseFloat(rpc.uptime) > 95 ? 'text-green-600' : 'text-red-600'}>
+                        <span className={parseFloat(rpc.uptime as any) > 95 ? 'text-green-600' : 'text-red-600'}>
                           {rpc.uptime}%
                         </span>
                       </div>

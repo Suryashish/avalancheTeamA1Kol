@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { ModeToggle } from '@/components/mode-toggle';
-import { Plus, Trash2, Settings, Mountain, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, Trash2, Settings, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface ConfigurationPageProps {
   onConfigurationComplete: (rpcEndpoints: string[], primaryRpc: string) => void;

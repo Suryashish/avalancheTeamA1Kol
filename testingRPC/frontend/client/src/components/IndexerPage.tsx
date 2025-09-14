@@ -7,7 +7,7 @@ import { LatestTransactions } from '@/components/indexer/LatestTransactions';
 import { TransactionSearch } from '@/components/indexer/TransactionSearch';
 import { Badge } from '@/components/ui/badge';
 import { createAvalancheService } from '@/lib/avalanche';
-import { Search, Activity, BarChart3, Mountain, Zap } from 'lucide-react';
+import { Search, Activity, BarChart3, Zap } from 'lucide-react';
 
 interface IndexerPageProps {
     rpcEndpoint: string

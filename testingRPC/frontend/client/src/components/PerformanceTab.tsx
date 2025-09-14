@@ -10,7 +10,7 @@ interface PerformanceTabProps {
   historicalData: any[]
 }
 
-export function PerformanceTab({ currentData, historicalData }: PerformanceTabProps) {
+export function PerformanceTab({ currentData }: PerformanceTabProps) {
   if (!currentData) return <div>Loading...</div>
 
   const rpcMetrics = Object.entries(currentData.performance.rpcMetrics).map(([rpc, metrics]: [string, any]) => ({

@@ -49,7 +49,7 @@ export function HeroSection() {
           </h1>
 
           <p className="mt-6 text-lg leading-8 text-white/90 sm:text-xl text-pretty max-w-2xl mx-auto animate-fade-in-up delay-200">
-            Monitor the data availability across your avalanche network with unmatched precision. Real-time insights,
+            Monitor the status of your avalanche network/subnet/L1's with unmatched precision. Real-time insights,
             comprehensive analytics, and reliable alerting for your blockchain infrastructure.
           </p>
 

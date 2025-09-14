@@ -40,6 +40,18 @@ export function TransactionTable({ transactions, title = "Transactions", avalanc
   const [detailedTransaction, setDetailedTransaction] = useState<DetailedTransaction | null>(null);
   const [loading, setLoading] = useState<string | null>(null);
 
+  // Determine if we're on testnet based on RPC URL
+  const isTestnet = () => {
+    const rpcUrl = avalancheService.getRpcUrl();
+    return rpcUrl.includes('api.avax-test.network') || rpcUrl.includes('avalanche-fuji-c-chain.publicnode.com');
+  };
+
+  // Get the appropriate Snowtrace URL based on network
+  const getSnowtraceUrl = (transactionHash: string) => {
+    const baseUrl = isTestnet() ? 'https://testnet.snowtrace.io' : 'https://snowtrace.io';
+    return `${baseUrl}/tx/${transactionHash}`;
+  };
+
   const copyToClipboard = async (text: string, field: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -280,7 +292,7 @@ export function TransactionTable({ transactions, title = "Transactions", avalanc
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => window.open(`https://snowtrace.io/tx/${transaction.hash}`, '_blank')}
+                        onClick={() => window.open(getSnowtraceUrl(transaction.hash), '_blank')}
                         title="View on Snowtrace"
                       >
                         <ExternalLink className="h-3 w-3" />
@@ -306,6 +318,7 @@ export function TransactionTable({ transactions, title = "Transactions", avalanc
           <TransactionDetails
             transaction={detailedTransaction}
             onBack={() => setShowDetails(false)}
+            avalancheService={avalancheService}
           />
         )}
       </Dialog>

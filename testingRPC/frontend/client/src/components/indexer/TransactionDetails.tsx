@@ -6,13 +6,12 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import type { DetailedTransaction } from '@/lib/avalanche';
+import type { DetailedTransaction, AvalancheService } from '@/lib/avalanche';
 import { 
   Copy, 
   Check, 
   ExternalLink, 
   ArrowLeft, 
-  Clock, 
   Fuel, 
   Hash, 
   User,
@@ -28,10 +27,24 @@ import { useState } from 'react';
 interface TransactionDetailsProps {
   transaction: DetailedTransaction;
   onBack: () => void;
+  avalancheService?: AvalancheService; // We'll add this as optional for backward compatibility
 }
 
-export function TransactionDetails({ transaction, onBack }: TransactionDetailsProps) {
+export function TransactionDetails({ transaction, onBack, avalancheService }: TransactionDetailsProps) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  // Determine if we're on testnet based on RPC URL
+  const isTestnet = () => {
+    if (!avalancheService) return false;
+    const rpcUrl = avalancheService.getRpcUrl();
+    return rpcUrl.includes('api.avax-test.network') || rpcUrl.includes('avalanche-fuji-c-chain.publicnode.com');
+  };
+
+  // Get the appropriate Snowtrace URL based on network
+  const getSnowtraceUrl = (transactionHash: string) => {
+    const baseUrl = isTestnet() ? 'https://testnet.snowtrace.io' : 'https://snowtrace.io';
+    return `${baseUrl}/tx/${transactionHash}`;
+  };
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
@@ -219,7 +232,7 @@ export function TransactionDetails({ transaction, onBack }: TransactionDetailsPr
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(`https://snowtrace.io/tx/${transaction.hash}`, '_blank')}
+              onClick={() => window.open(getSnowtraceUrl(transaction.hash), '_blank')}
               className="hover:bg-accent"
             >
               <ExternalLink className="h-4 w-4 mr-2" />

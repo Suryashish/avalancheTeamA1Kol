@@ -57,6 +57,7 @@ export function HeroSection() {
             <Button
               size="lg"
               className="bg-orange-500 hover:bg-orange-600 text-white px-8 shadow-lg shadow-orange-500/25 hover:shadow-orange-500/40 transition-all duration-300 hover:scale-105"
+              onClick={() => window.location.href = '/dashboard'}
             >
               Start Monitoring
               <ArrowRight className="ml-2 h-4 w-4" />

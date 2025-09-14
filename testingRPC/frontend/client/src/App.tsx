@@ -160,7 +160,7 @@ export function AppContext() {
   useEffect(() => {
     // Establish WebSocket connection
     const connectWebSocket = () => {
-      const ws = new WebSocket('ws://avalanche-team-a1-kol-server.vercel.app')
+      const ws = new WebSocket('wss://avalanche-team-a1-kol-server.vercel.app')
       wsRef.current = ws
 
       ws.onopen = () => {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -18,6 +19,7 @@ import { IndexerPage } from '@/components/IndexerPage'
 import { ConfigurationPage } from '@/components/ConfigurationPage'
 import { ModeToggle } from '@/components/mode-toggle'
 import './App.css'
+import Landing from './components/Landing'
 
 interface DAResult {
   timestamp: string
@@ -134,7 +136,7 @@ interface AlertItem {
   acknowledged: boolean
 }
 
-function App() {
+export function AppContext() {
   const [currentData, setCurrentData] = useState<DAResult | null>(null)
   const [historicalData, setHistoricalData] = useState<DAResult[]>([])
   const [alerts, setAlerts] = useState<AlertItem[]>([])
@@ -275,10 +277,10 @@ function App() {
     <div className="min-h-screen bg-background dark:bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex justify-between items-center">
+        <div className="flex p-4 justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Avalanche DA Watchdog</h1>
-            <p className="text-muted-foreground">Real-time Data Availability Monitoring Dashboard</p>
+            <h1 className="text-3xl font-bold text-foreground bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">Avalanche custom L1 Watcher & Explorer</h1>
+            <p className="text-muted-foreground ">Real-time custom L1 Availability Monitoring & Explorer</p>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="outline" className="text-xs">
                 Monitoring {rpcEndpoints.length} RPC{rpcEndpoints.length !== 1 ? 's' : ''}
@@ -637,4 +639,15 @@ function App() {
   )
 }
 
-export default App
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/dashboard" element={<AppContext />} />
+      </Routes>
+    </BrowserRouter>
+  );
+};
+
+export default App;

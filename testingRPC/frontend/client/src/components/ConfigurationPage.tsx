@@ -143,16 +143,16 @@ export function ConfigurationPage({ onConfigurationComplete }: ConfigurationPage
 
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-4 pt-8">
           <div className="flex items-center justify-center gap-3">
-            <div className="p-3 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl">
+            {/* <div className="p-3 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl">
               <Mountain className="h-8 w-8 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
-              Avalanche DA Watchdog
+            </div> */}
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-orange-500 to-orange-400 bg-clip-text text-transparent">
+              Avalanche custom L1 Watcher & Explorer
             </h1>
           </div>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             Configure your RPC endpoints to monitor data availability across your Avalanche network
           </p>
           <Badge variant="outline" className="text-sm">

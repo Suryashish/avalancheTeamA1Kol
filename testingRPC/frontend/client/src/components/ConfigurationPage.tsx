@@ -90,7 +90,7 @@ export function ConfigurationPage({ onConfigurationComplete }: ConfigurationPage
 
     try {
       // Configure backend with RPC endpoints
-      const response = await fetch('http://localhost:3001/api/configure', {
+      const response = await fetch('https://avalanche-team-a1-kol-server.vercel.app/api/configure', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rpcEndpoints })

@@ -218,10 +218,10 @@ export function AnalyticsTab({ historicalData, currentData }: AnalyticsTabProps)
             <TableBody>
               {rpcAnalysis.map((rpc, i) => {
                 const performanceGrade = 
-                  parseFloat(rpc.uptime) >= 99 && rpc.avgResponseTime < 1000 ? 'A+' :
-                  parseFloat(rpc.uptime) >= 95 && rpc.avgResponseTime < 2000 ? 'A' :
-                  parseFloat(rpc.uptime) >= 90 && rpc.avgResponseTime < 3000 ? 'B' :
-                  parseFloat(rpc.uptime) >= 80 ? 'C' : 'F'
+                  parseFloat(String(rpc.uptime)) >= 99 && rpc.avgResponseTime < 1000 ? 'A+' :
+                  parseFloat(String(rpc.uptime)) >= 95 && rpc.avgResponseTime < 2000 ? 'A' :
+                  parseFloat(String(rpc.uptime)) >= 90 && rpc.avgResponseTime < 3000 ? 'B' :
+                  parseFloat(String(rpc.uptime)) >= 80 ? 'C' : 'F'
                 
                 return (
                   <TableRow key={i}>

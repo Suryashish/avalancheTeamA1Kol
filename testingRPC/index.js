@@ -112,6 +112,13 @@ async function getTx(rpc, txHash) {
 // Update RPC performance metrics
 function updateRpcPerformance(rpc, success, responseTime) {
   const metrics = rpcPerformance[rpc];
+  
+  // Safety check: if metrics doesn't exist (e.g., after configuration change), skip update
+  if (!metrics) {
+    console.warn(`Metrics not found for RPC: ${rpc}. Skipping performance update.`);
+    return;
+  }
+  
   metrics.totalRequests++;
   
   if (success) {
@@ -279,6 +286,12 @@ function scoreDA(blocks, txResults, performanceMetrics, networkHealth) {
 // Main sampling function with enhanced analytics
 async function sampleLatestBlock() {
   const startTime = Date.now();
+  
+  // Safety check: ensure we have RPCs configured
+  if (RPCS.length === 0) {
+    console.warn('No RPC endpoints configured. Skipping sampling.');
+    return null;
+  }
   
   // Fetch latest block from all RPCs
   const blocks = await Promise.all(RPCS.map(rpc => getBlock(rpc)));
@@ -636,5 +649,7 @@ server.listen(PORT, ()=> console.log(`DA Watchdog API running on http://localhos
 // Optional: auto-sample every 10 seconds and log
 setInterval(async ()=>{
   const result = await sampleLatestBlock();
-  console.log("DA Health Sample:", result.daScore);
+  if (result) {
+    console.log("DA Health Sample:", result.daScore);
+  }
 }, 2000);
